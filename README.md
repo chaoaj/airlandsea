@@ -2,9 +2,9 @@
 
 A mobile-friendly, accessible p5.js version of *Air, Land & Sea: Critters* using the print-and-play card art.
 
-[Dev url](https://chaoaj.github.io/team0x-chao-fa26/index-dev.html)
+[Dev url](https://chaoaj.github.io/airlandsea/index-dev.html)
 
-[Production url](https://chaoaj.github.io/team0x-chao-fa26/)
+[Production url](https://chaoaj.github.io/airlandsea/)
 
 ## Modes
 - **1 player vs. the Bot** — follows the official *Bot Rules* card (Bot is always 1st player, plays the top card of its hand face up, withdraws on a 4th card, Priority & Choice order, flip priority, Blockade redirect).
