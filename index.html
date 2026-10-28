@@ -1,18 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="An accessible, mobile-friendly p5.js version of Air, Land &amp; Sea: Critters for one player against the Bot or two players on one device.">
+  <meta name="theme-color" content="#13202d">
+  <title>Air, Land &amp; Sea: Critters</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="libraries/p5.min.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#actions">Skip to actions</a>
 
-    <title>Sketch</title>
+  <header class="topbar">
+    <h1 class="title">Air, Land &amp; Sea: <span>Critters</span></h1>
+    <div id="scoreboard" class="scoreboard" aria-label="Score"></div>
+    <nav class="topnav" aria-label="Game menu">
+      <button type="button" id="btn-text-board" class="btn btn-ghost">Text view</button>
+      <button type="button" id="btn-log" class="btn btn-ghost log-toggle" aria-controls="logpanel" aria-expanded="false">Log</button>
+      <button type="button" id="btn-rules" class="btn btn-ghost">Rules<span class="long"> &amp; help</span></button>
+      <button type="button" id="btn-new" class="btn btn-ghost">New<span class="long"> game</span></button>
+    </nav>
+  </header>
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+  <div class="layout">
+    <main id="main" class="main">
+      <h2 class="sr-only">Game board</h2>
+      <div id="board-wrap" class="board-wrap">
+        <div id="canvas-holder" class="canvas-holder" aria-hidden="true"></div>
+        <div id="overlay" class="overlay" role="group" aria-label="Habitats, animals and your hand"></div>
+      </div>
+      <section id="actions" class="actions" aria-labelledby="prompt" tabindex="-1">
+        <p id="prompt" class="prompt"></p>
+        <div id="action-buttons" class="action-buttons"></div>
+      </section>
+    </main>
 
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
-  </head>
+    <aside id="logpanel" class="logpanel" aria-labelledby="log-heading">
+      <div class="logpanel-head">
+        <h2 id="log-heading">Game log</h2>
+        <button type="button" id="btn-log-close" class="btn btn-ghost log-close">Close log</button>
+      </div>
+      <ol id="log" class="log" tabindex="0" aria-label="Game log entries"></ol>
+    </aside>
+  </div>
 
-  <body>
-    <script src="sketch.js"></script>
-  </body>
+  <!-- Screen-reader announcements -->
+  <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="live-assertive" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+  <!-- Setup -->
+  <dialog id="dlg-setup" aria-labelledby="setup-title">
+    <form id="setup-form" method="dialog" class="dlg-body">
+      <h2 id="setup-title">New game</h2>
+      <fieldset>
+        <legend>Players</legend>
+        <label class="choice"><input type="radio" name="mode" value="bot" checked> 1 player against the Bot</label>
+        <label class="choice"><input type="radio" name="mode" value="hotseat"> 2 players on this device</label>
+      </fieldset>
+      <fieldset id="fs-bot">
+        <legend>Bot</legend>
+        <label class="choice"><input type="radio" name="botLevel" value="rules" checked> Bot Rules (official solo card)</label>
+        <label class="choice"><input type="radio" name="botLevel" value="enhanced"> Bot Rules + Difficulty Enhancement</label>
+        <label class="choice"><input type="radio" name="botLevel" value="smart"> Semiautonomous Bot (makes its best choices)</label>
+        <label class="field">Bot speed
+          <select name="speed">
+            <option value="fast">Fast</option>
+            <option value="normal" selected>Normal</option>
+            <option value="slow">Slow</option>
+            <option value="step">Wait for me to press Continue</option>
+          </select>
+        </label>
+      </fieldset>
+      <fieldset id="fs-names" hidden>
+        <legend>Player names</legend>
+        <label class="field">Player 1 <input type="text" name="name1" value="Player 1" maxlength="16" autocomplete="off"></label>
+        <label class="field">Player 2 <input type="text" name="name2" value="Player 2" maxlength="16" autocomplete="off"></label>
+        <label class="choice"><input type="checkbox" name="hide" checked> Hide hands between turns (pass the device)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Game length</legend>
+        <label class="choice"><input type="radio" name="length" value="standard" checked> Standard: first to 12 points</label>
+        <label class="choice"><input type="radio" name="length" value="long"> Long game: first to 18 points</label>
+        <label class="choice"><input type="radio" name="length" value="beginner"> Beginner: first to win 3 battles, no withdrawing</label>
+      </fieldset>
+      <fieldset>
+        <legend>Variant</legend>
+        <label class="choice"><input type="checkbox" name="transportUncovered"> Designer suggested: Seahorse can only move uncovered animals</label>
+      </fieldset>
+      <div class="dlg-actions">
+        <button type="submit" class="btn btn-primary" value="start">Start game</button>
+        <button type="button" class="btn" data-open="dlg-rules">How to play</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Rules -->
+  <dialog id="dlg-rules" aria-labelledby="rules-title" class="dlg-wide">
+    <div class="dlg-body">
+      <div class="dlg-head">
+        <h2 id="rules-title">How to play</h2>
+        <button type="button" class="btn" data-close>Close</button>
+      </div>
+      <div id="rules-content" class="rules"></div>
+    </div>
+  </dialog>
+
+  <!-- Card detail -->
+  <dialog id="dlg-card" aria-labelledby="card-title">
+    <div class="dlg-body card-detail">
+      <h2 id="card-title"></h2>
+      <img id="card-img" src="" alt="">
+      <div id="card-text"></div>
+      <div class="dlg-actions"><button type="button" class="btn btn-primary" data-close>Close</button></div>
+    </div>
+  </dialog>
+
+  <!-- Pass device -->
+  <dialog id="dlg-pass" aria-labelledby="pass-title" class="dlg-pass">
+    <div class="dlg-body">
+      <h2 id="pass-title"></h2>
+      <p id="pass-text"></p>
+      <div class="dlg-actions"><button type="button" id="btn-pass-ok" class="btn btn-primary"></button></div>
+    </div>
+  </dialog>
+
+  <!-- Battle result -->
+  <dialog id="dlg-battle" aria-labelledby="battle-title">
+    <div class="dlg-body">
+      <h2 id="battle-title"></h2>
+      <div id="battle-content"></div>
+      <div class="dlg-actions" id="battle-actions"></div>
+    </div>
+  </dialog>
+
+  <!-- Confirm -->
+  <dialog id="dlg-confirm" aria-labelledby="confirm-title">
+    <div class="dlg-body">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <div class="dlg-actions">
+        <button type="button" id="btn-confirm-yes" class="btn btn-danger"></button>
+        <button type="button" class="btn" data-close>Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Text board -->
+  <dialog id="dlg-text" aria-labelledby="text-title" class="dlg-wide">
+    <div class="dlg-body">
+      <div class="dlg-head">
+        <h2 id="text-title">Board as text</h2>
+        <button type="button" class="btn" data-close>Close</button>
+      </div>
+      <div id="text-content"></div>
+    </div>
+  </dialog>
+
+  <script src="js/cards.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/rules-text.js"></script>
+  <script src="sketch.js"></script>
+</body>
 </html>
