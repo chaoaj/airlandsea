@@ -2,7 +2,6 @@
 
 A mobile-friendly, accessible p5.js version of *Air, Land & Sea: Critters* using the print-and-play card art.
 
-[Dev url](https://chaoaj.github.io/airlandsea/index-dev.html)
 
 [Production url](https://chaoaj.github.io/airlandsea/)
 
