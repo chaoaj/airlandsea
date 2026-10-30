@@ -1,4 +1,4 @@
-// Air, Land & Sea: Critters — p5.js front end.
+// Air, Land & Sea (Critters / Critters at War / War themes) — p5.js front end.
 //
 // Accessibility approach: p5 draws the board on a canvas (hidden from
 // assistive tech), and a layer of real <button> elements is positioned
@@ -7,7 +7,7 @@
 // handle all pointer/touch input. Every choice is also listed as a large
 // button in the action bar. Game events are announced through a live region.
 
-/* global ALS, BOT, CARD_DEFS, THEATRE_LABEL, TYPE_LABEL, COMMANDERS, rulesHTML */
+/* global ALS, BOT, ART, CARD_DEFS, THEATRE_LABEL, TYPE_LABEL, COMMANDERS, THEMES, CURRENT_THEME, applyTheme, vocab, rulesHTML */
 
 let G = null;            // engine state
 const UI = {
@@ -33,6 +33,28 @@ function preload() {
   for (const d of CARD_DEFS) IMG[d.slug] = loadImage(ASSET + d.slug + '.jpg');
   IMG.back = loadImage(ASSET + 'back.jpg');
   for (const t of ['air', 'land', 'sea']) IMG['theatre-' + t] = loadImage(ASSET + 'theatre-' + t + '.jpg');
+}
+
+// ---- theme-aware art lookups (photo files for Critters, p5-drawn for the others)
+const drawnTheme = () => CURRENT_THEME.art === 'drawn';
+function cardImg(id) { return drawnTheme() ? ART.get(CURRENT_THEME.key, 'card', id) : IMG[def(id).slug]; }
+function backImg() { return drawnTheme() ? ART.get(CURRENT_THEME.key, 'back', 0) : IMG.back; }
+function theatreImg(t) { return drawnTheme() ? ART.get(CURRENT_THEME.key, 'banner', t) : IMG['theatre-' + t]; }
+function cardURL(id) { return drawnTheme() ? ART.dataURL(CURRENT_THEME.key, 'card', id) : ASSET + def(id).slug + '.jpg'; }
+function backURL() { return drawnTheme() ? ART.dataURL(CURRENT_THEME.key, 'back', 0) : ASSET + 'back.jpg'; }
+function backAlt() {
+  if (CURRENT_THEME.key === 'war') return 'Face-down card back: strength 2, the word Unknown, and a large question mark over green camouflage.';
+  if (CURRENT_THEME.key === 'critterswar') return 'Face-down card back: strength 2, the word Unknown, and three pairs of eyes peeking out of dark green bushes.';
+  return BACK_ALT;
+}
+
+function setTitle() {
+  const th = CURRENT_THEME;
+  const base = th.key === 'war' ? 'Air, Land &amp; Sea' : 'Air, Land &amp; Sea:';
+  document.querySelector('.title').innerHTML = th.key === 'war'
+    ? `Air, Land &amp; Sea <span>(War)</span>` : `${base} <span>${th.titleAccent}</span>`;
+  document.title = th.title;
+  $('rules-content').innerHTML = vocab(rulesHTML());
 }
 
 function setup() {
@@ -68,6 +90,7 @@ const V = () => (isBotMode() ? 0 : UI.viewer);           // bottom player
 const T = () => 1 - V();                                   // top player
 const handVisible = () => G && (isBotMode() || UI.revealed);
 const def = (id) => CARD_DEFS[id];
+const NK = (key) => CARD_DEFS.find(d => d.key === key).name;
 const hab = (pos) => THEATRE_LABEL[G.order[pos]];
 
 function possessive(p) {
@@ -200,7 +223,7 @@ function dashed(on) { drawingContext.setLineDash(on ? [9, 6] : []); }
 function drawCard(id, faceUp, r, o) {
   o = o || {};
   const rad = Math.max(4, r.w * 0.05);
-  const img = faceUp ? IMG[def(id).slug] : IMG.back;
+  const img = faceUp ? cardImg(id) : backImg();
   roundedClip(r.x, r.y, r.w, r.h, rad, () => image(img, r.x, r.y, r.w, r.h));
   noFill(); stroke(0, 0, 0, 150); strokeWeight(1); rect(r.x, r.y, r.w, r.h, rad);
 
@@ -211,8 +234,11 @@ function drawCard(id, faceUp, r, o) {
     noStroke(); fill(10, 18, 26, 225);
     rect(r.x + r.w - pw - r.w * 0.04, r.y + band * 0.3, pw, ph, 4);
     fill('#ffd23f'); textAlign(CENTER, CENTER); textStyle(BOLD);
-    textSize(Math.max(10, Math.min(ph * 0.62, r.w * 0.12)));
-    text(`${def(id).name} ${def(id).str}`, r.x + r.w - pw / 2 - r.w * 0.04, r.y + band * 0.3 + ph / 2 + 1);
+    const peekTxt = `${def(id).name} ${def(id).str}`;
+    let ts = Math.max(9, Math.min(ph * 0.62, r.w * 0.12));
+    textSize(ts);
+    while (textWidth(peekTxt) > pw - 6 && ts > 8) { ts -= 0.5; textSize(ts); }
+    text(peekTxt, r.x + r.w - pw / 2 - r.w * 0.04, r.y + band * 0.3 + ph / 2 + 1);
   }
   if (o.eff !== undefined && o.eff !== null) {
     const printed = faceUp ? def(id).str : 2;
@@ -253,7 +279,7 @@ function pill(txt, cx, cy, h, lead) {
 
 function drawBanner(L, pos) {
   const x = L.colX(pos), y = L.bannerY, w = L.cw, h = L.bh;
-  const img = IMG['theatre-' + G.order[pos]];
+  const img = theatreImg(G.order[pos]);
   const sh = img.width * h / w;
   roundedClip(x, y, w, h, 8, () => image(img, x, y, w, h, 0, (img.height - sh) / 2, img.width, sh));
   noFill(); stroke(255, 255, 255, 140); strokeWeight(1); rect(x, y, w, h, 8);
@@ -326,12 +352,12 @@ function drawSplash() {
   const w = Math.min(width * 0.28, 220), h = w * 0.42, g = 10;
   const x0 = (width - (3 * w + 2 * g)) / 2, y = height / 2 - h - 20;
   ['air', 'land', 'sea'].forEach((t, i) => {
-    const img = IMG['theatre-' + t];
+    const img = theatreImg(t);
     const sh = img.width * h / w;
     roundedClip(x0 + i * (w + g), y, w, h, 8, () => image(img, x0 + i * (w + g), y, w, h, 0, (img.height - sh) / 2, img.width, sh));
   });
   noStroke(); fill('#ffffff'); textAlign(CENTER, CENTER); textStyle(BOLD); textSize(Math.min(28, width * 0.06));
-  text('Air, Land & Sea: Critters', width / 2, y + h + 40);
+  text(CURRENT_THEME.title, width / 2, y + h + 40);
   textStyle(NORMAL); fill('#c9d7e4'); textSize(Math.min(16, width * 0.04));
   text('Press “New game” to start.', width / 2, y + h + 76);
 }
@@ -355,7 +381,7 @@ function boardCardLabel(pos, p, i) {
   if (c.faceUp) {
     const d = def(c.id);
     s = `${owner} ${d.name}, face up, ${strengthNote(pos, p, i)}`;
-    if (d.type !== 'none') s += `. ${TYPE_LABEL[d.type]}: ${d.text}`;
+    if (d.type !== 'none') s += `. ${TYPE_LABEL[d.type]}: ${d.text.replace(/\.$/, '')}`;
   } else if (seeIt) {
     s = `${owner} face-down animal (only you can see it is ${def(c.id).name} ${def(c.id).str}), ${strengthNote(pos, p, i)}`;
   } else {
@@ -397,7 +423,7 @@ function mkHit(r, label, key, onClick, extraClass) {
   b.className = 'hit' + (extraClass ? ' ' + extraClass : '');
   b.style.left = r.x + 'px'; b.style.top = r.y + 'px';
   b.style.width = r.w + 'px'; b.style.height = (r.hitH || r.h) + 'px';
-  b.setAttribute('aria-label', label);
+  b.setAttribute('aria-label', vocab(label));
   b.dataset.key = key;
   b.addEventListener('click', onClick);
   return b;
@@ -463,10 +489,10 @@ function btn(label, onClick, o) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'btn' + (o.cls ? ' ' + o.cls : '');
-  b.innerHTML = label + (o.sub ? `<span class="sub">${o.sub}</span>` : '');
+  b.innerHTML = vocab(label) + (o.sub ? `<span class="sub">${vocab(o.sub)}</span>` : '');
   if (o.pressed !== undefined) b.setAttribute('aria-pressed', o.pressed ? 'true' : 'false');
   if (o.disabled) b.disabled = true;
-  if (o.aria) b.setAttribute('aria-label', o.aria);
+  if (o.aria) b.setAttribute('aria-label', vocab(o.aria));
   b.dataset.key = o.key || ('act-' + label.replace(/<[^>]+>/g, ''));
   b.addEventListener('click', onClick);
   return b;
@@ -485,7 +511,7 @@ function group(label, children) {
 }
 
 function setPrompt(main, detail) {
-  $('prompt').innerHTML = main + (detail ? `<span class="detail">${detail}</span>` : '');
+  $('prompt').innerHTML = vocab(main) + (detail ? `<span class="detail">${vocab(detail)}</span>` : '');
 }
 
 function renderActions() {
@@ -520,9 +546,9 @@ function renderActions() {
   const p = pd.player;
   if (pd.kind === 'turn') {
     const extras = [];
-    if (G.airdropActive[p]) extras.push('Cuckoo: this turn you may play face up to any habitat.');
-    if (ALS.hasFaceUp(G, p, 'aerodrome')) extras.push('Stork: animals of strength 3 or less may be played face up to any habitat.');
-    if (ALS.anyFaceUp(G, 'containment')) extras.push('Vulture is face up: any animal played face down is discarded.');
+    if (G.airdropActive[p]) extras.push(`${NK('airdrop')}: this turn you may play face up to any habitat.`);
+    if (ALS.hasFaceUp(G, p, 'aerodrome')) extras.push(`${NK('aerodrome')}: animals of strength 3 or less may be played face up to any habitat.`);
+    if (ALS.anyFaceUp(G, 'containment')) extras.push(`${NK('containment')} is face up: any animal played face down is discarded.`);
     if (UI.selected === null) {
       setPrompt(`${isBotMode() ? 'Your' : nm(p) + ', your'} turn: choose an animal from your hand.`, extras.join(' '));
       if (G.opts.length !== 'beginner') {
@@ -555,7 +581,7 @@ function renderActions() {
     detail = `Top animal of the deck: ${d.name} (${THEATRE_LABEL[d.theatre]}, ${d.str}). It would be played face down.`;
   }
   if (pd.kind === 'transportDest') detail = `Moving: ${optionLabel({ kind: 'x' }, pd.card)}.`;
-  if (pd.kind === 'flip' && pd.player !== ALS.find(G, pd.src)?.player) detail = `${possessive(1 - pd.player)} Fox makes you flip first.`;
+  if (pd.kind === 'flip' && pd.player !== ALS.find(G, pd.src)?.player) detail = `${possessive(1 - pd.player)} ${NK('disrupt')} makes you flip first.`;
   setPrompt((isBotMode() ? '' : nm(p) + ': ') + pd.prompt, detail);
   const opts = pd.options.map(v => btn(optionLabel(pd, v), () => doResolve(v), { cls: 'btn-primary', key: 'opt-' + v }));
   box.appendChild(group('Options', opts));
@@ -590,7 +616,7 @@ function renderLog() {
   const fresh = G.log.slice(UI.lastLogN);
   for (const e of fresh) {
     const li = document.createElement('li');
-    li.textContent = e.text;
+    li.textContent = vocab(e.text);
     if (e.tag) li.className = e.tag;
     ol.appendChild(li);
   }
@@ -608,7 +634,7 @@ function renderLog() {
 function announce(msg) {
   const live = $('live');
   live.textContent = '';
-  setTimeout(() => { live.textContent = msg; }, 60);
+  setTimeout(() => { live.textContent = vocab(msg); }, 60);
 }
 
 // ------------------------------------------------------------------ refresh
@@ -747,9 +773,9 @@ function closeDialog(id) {
 function showPass() {
   const p = G.pending.player;
   $('pass-title').textContent = `${nm(p)}’s turn`;
-  $('pass-text').textContent = G.pending.kind === 'turn'
+  $('pass-text').textContent = vocab(G.pending.kind === 'turn'
     ? `Pass the device to ${nm(p)}. ${nm(p)}, press the button when only you can see the screen.`
-    : `${nm(p)} needs to make a choice: ${G.pending.prompt} Pass the device to ${nm(p)}.`;
+    : `${nm(p)} needs to make a choice: ${G.pending.prompt} Pass the device to ${nm(p)}.`);
   $('btn-pass-ok').textContent = `I’m ${nm(p)} — show my hand`;
   $('btn-pass-ok').onclick = () => {
     UI.viewer = p; UI.revealed = true; UI.selected = null;
@@ -776,12 +802,12 @@ function showBattleDialog(force) {
   const score = beginner
     ? `${nm(0)}: ${G.battleWins[0]} battles won · ${nm(1)}: ${G.battleWins[1]} battles won (first to 3).`
     : `${nm(0)}: ${G.scores[0]} points · ${nm(1)}: ${G.scores[1]} points (first to ${ALS.target(G)}).`;
-  $('battle-content').innerHTML = `<p>${how}</p>
+  $('battle-content').innerHTML = vocab(`<p>${how}</p>
     <div class="table-scroll" tabindex="0"><table><caption>Final strength in each habitat</caption>
     <thead><tr><th scope="col">Habitat</th><th scope="col">${nm(0)}</th><th scope="col">${nm(1)}</th><th scope="col">Controlled by</th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     <p><strong>Score:</strong> ${score}</p>
-    ${over ? '' : '<p>Next battle: the habitats rotate one place' + (isBotMode() ? ' and the Bot stays 1st player.' : ' and players swap 1st and 2nd player.') + '</p>'}`;
+    ${over ? '' : '<p>Next battle: the habitats rotate one place' + (isBotMode() ? ' and the Bot stays 1st player.' : ' and players swap 1st and 2nd player.') + '</p>'}`);
   const act = $('battle-actions');
   act.innerHTML = '';
   if (over) {
@@ -806,16 +832,16 @@ function openCardDetail(id, loc) {
   const img = $('card-img');
   const text = $('card-text');
   if (hidden) {
-    $('card-title').textContent = `${possessive(loc.player)} face-down animal`;
-    img.src = ASSET + 'back.jpg';
-    img.alt = BACK_ALT;
+    $('card-title').textContent = vocab(`${possessive(loc.player)} face-down animal`);
+    img.src = backURL();
+    img.alt = backAlt();
     text.innerHTML = `<dl><dt>Strength</dt><dd>${ALS.cardStrengths(G, loc.pos, loc.player)[loc.index]}</dd>
       <dt>Habitat</dt><dd>${hab(loc.pos)}, ${loc.covered ? 'covered' : 'uncovered'}</dd>
       <dt>Ability</dt><dd>None while face down. Its identity is hidden.</dd></dl>`;
   } else {
     $('card-title').textContent = d.name;
-    img.src = ASSET + d.slug + '.jpg';
-    img.alt = `${d.name} card. Photo: ${d.photo} Printed: ${d.str}, ${d.name}${d.type === 'none' ? '' : ', ' + d.text}`;
+    img.src = cardURL(id);
+    img.alt = `${d.name} card. ${drawnTheme() ? 'Illustration' : 'Photo'}: ${d.photo} Printed: ${d.str}, ${d.name}${d.type === 'none' ? '' : ', ' + d.text}`;
     let extra = '';
     if (loc) {
       const eff = ALS.cardStrengths(G, loc.pos, loc.player)[loc.index];
@@ -824,6 +850,7 @@ function openCardDetail(id, loc) {
     text.innerHTML = `<dl><dt>Habitat</dt><dd>${THEATRE_LABEL[d.theatre]}</dd><dt>Strength</dt><dd>${d.str}</dd>
       <dt>Type</dt><dd>${TYPE_LABEL[d.type]}</dd><dt>Ability</dt><dd>${d.text || 'None'}</dd>${extra}</dl>`;
   }
+  text.innerHTML = vocab(text.innerHTML);
   openDialog('dlg-card');
 }
 
@@ -843,23 +870,25 @@ function openTextBoard() {
   const rows = [0, 1, 2].map(pos => {
     const sb = ALS.supportBonus(G, pos, t), sv = ALS.supportBonus(G, pos, v);
     return `<tr><th scope="row">${hab(pos)}</th>
-      <td>${sideList(pos, t)}${sb ? `<p>Bee bonus +${sb}</p>` : ''}<p><strong>Total ${ALS.strength(G, pos, t)}</strong></p></td>
-      <td>${sideList(pos, v)}${sv ? `<p>Bee bonus +${sv}</p>` : ''}<p><strong>Total ${ALS.strength(G, pos, v)}</strong></p></td>
+      <td>${sideList(pos, t)}${sb ? `<p>${NK('support')} bonus +${sb}</p>` : ''}<p><strong>Total ${ALS.strength(G, pos, t)}</strong></p></td>
+      <td>${sideList(pos, v)}${sv ? `<p>${NK('support')} bonus +${sv}</p>` : ''}<p><strong>Total ${ALS.strength(G, pos, v)}</strong></p></td>
       <td>${nm(ALS.controller(G, pos))}</td></tr>`;
   }).join('');
   const hand = handVisible() ? G.hands[v].map(id => `${def(id).name} (${THEATRE_LABEL[def(id).theatre]} ${def(id).str})`).join(', ') : 'Hidden';
-  $('text-content').innerHTML = `
+  $('text-content').innerHTML = vocab(`
     <p>Habitats from left to right. Covered cards are listed first; the last card in each list is on top. Ties go to the 1st player, ${nm(G.first)}.</p>
     <div class="table-scroll" tabindex="0"><table><caption>Board, battle ${G.battle}</caption>
       <thead><tr><th scope="col">Habitat</th><th scope="col">${nm(t)}</th><th scope="col">${nm(v)}</th><th scope="col">Controlled by</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
     <p><strong>${possessive(v)} hand:</strong> ${hand}</p>
-    <p><strong>${possessive(t)} hand:</strong> ${G.hands[t].length} hidden cards. <strong>Deck:</strong> ${G.deck.length} cards.</p>`;
+    <p><strong>${possessive(t)} hand:</strong> ${G.hands[t].length} hidden cards. <strong>Deck:</strong> ${G.deck.length} cards.</p>`);
   openDialog('dlg-text');
 }
 
 // ------------------------------------------------------------------ game start
 function startGame(opts) {
+  applyTheme(opts.theme || 'critters');
+  setTitle();
   UI.lastOpts = opts;
   clearTimeout(UI.botTimer); UI.botTimer = null;
   G = ALS.newGame(opts);
@@ -877,7 +906,7 @@ function startGame(opts) {
 }
 
 function wireDOM() {
-  $('rules-content').innerHTML = rulesHTML();
+  setTitle();
 
   // Generic close buttons and dialog focus return.
   document.querySelectorAll('dialog').forEach(d => {
@@ -942,6 +971,7 @@ function wireDOM() {
       length: f.length.value,
       transportUncovered: f.transportUncovered.checked,
       speed: f.speed.value,
+      theme: f.theme.value,
       hide: f.hide.checked,
       names
     });

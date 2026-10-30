@@ -2,6 +2,7 @@
 // the Bot Rules card and the Critters print-and-play.
 
 function rulesHTML() {
+  const NK = (k) => CARD_DEFS.find(d => d.key === k).name;
   const rows = CARD_DEFS.map(d => `
     <tr>
       <td>${d.str}</td>
@@ -37,17 +38,17 @@ function rulesHTML() {
   <ul>
     <li><strong>Instant</strong> (lightning bolt): happens once, when played or flipped face up.</li>
     <li><strong>Ongoing</strong> (infinity sign): always in effect while face up.</li>
-    <li><strong>Flip</strong>: turn a card face up or face down. Mallard, Snake and Fox can only flip uncovered animals.</li>
+    <li><strong>Flip</strong>: turn a card face up or face down. An ability can flip covered or uncovered animals.</li>
     <li><strong>Move</strong>: put an animal into a different habitat on the same side, on top. Moving is not playing.</li>
     <li><strong>Discard</strong>: the card goes face down to the bottom of the deck.</li>
     <li>"You" on a card means the player whose side the card is on.</li>
   </ul>
 
-  <h3>The 18 critters</h3>
+  <h3>The 18 cards</h3>
   <div class="table-scroll" tabindex="0">
   <table>
-    <caption>Critter cards</caption>
-    <thead><tr><th scope="col">Strength</th><th scope="col">Animal</th><th scope="col">Habitat</th><th scope="col">Type</th><th scope="col">Ability</th></tr></thead>
+    <caption>All 18 cards</caption>
+    <thead><tr><th scope="col">Strength</th><th scope="col">Name</th><th scope="col">Habitat</th><th scope="col">Type</th><th scope="col">Ability</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   </div>
@@ -59,12 +60,20 @@ function rulesHTML() {
   <h3>Solo play: the Bot</h3>
   <ul>
     <li>The Bot is always the 1st player and wins tied habitats. Its hand is hidden and it always plays the top card of its hand face up into the matching habitat.</li>
-    <li>If the Bot would play or move a 4th animal into its side of a habitat, it withdraws instead — unless its Stork (strength 3 or less), Cuckoo, or an Otter with a face-down animal to return lets it avoid that.</li>
+    <li>If the Bot would play or move a 4th animal into its side of a habitat, it withdraws instead — unless its ${NK('aerodrome')} (strength 3 or less), ${NK('airdrop')}, or a ${NK('redeploy')} with a face-down animal to return lets it avoid that.</li>
     <li>When the Bot has a choice, it picks the habitat to <em>your right</em> of the card causing the effect, then to your left, then that card's own habitat, then the far habitat. In a stack it picks the uncovered card first.</li>
     <li>Bot flip priority: its face-down → face up; your face-up → face down; your face-down → face up; its face-up → face down.</li>
-    <li>The Bot treats "may" as "must". If Octopus would discard its animal, the Bot places it face down in an adjacent habitat instead. Returned cards go to the bottom of its hand.</li>
+    <li>The Bot treats "may" as "must". If ${NK('blockade')} would discard its animal, the Bot places it face down in an adjacent habitat instead. Returned cards go to the bottom of its hand.</li>
     <li><strong>Difficulty Enhancement</strong>: at the end of a battle, if the Bot lost 3 habitats it plays the top 2 deck cards face up into matching habitats (1 card if it lost 2). Their abilities are ignored.</li>
     <li><strong>Semiautonomous Bot</strong>: plays the same way, but every choice is the best one for the Bot.</li>
+  </ul>
+
+  <h3>Themes</h3>
+  <p>Choose a theme when you start a new game. The rules are the same in every theme:</p>
+  <ul>
+    <li><strong>Critters</strong>: the print-and-play photo cards (anim&#97;ls and h&#97;bitats).</li>
+    <li><strong>Critters at War</strong>: cartoon critters with the Critters at War card names. The art is original and drawn in p5.js, not the official artwork.</li>
+    <li><strong>War</strong>: the classic military card names, with original drawn planes, tanks and ships.</li>
   </ul>
 
   <h3>Playing on this device</h3>

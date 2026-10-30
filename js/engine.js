@@ -11,8 +11,8 @@
 //
 // Rule notes (from the Compressed Rules v1.2, first-edition clarifications,
 // which the critter cards are based on):
-//  • Flips from Mallard (Maneuver), Snake (Ambush) and Fox (Disrupt) only
-//    target uncovered cards.
+//  • Revised-edition rule: abilities can affect covered AND uncovered cards
+//    (Maneuver, Ambush, Disrupt can flip any card in range).
 //  • Octopus (Blockade) applies when ANY player plays into an adjacent habitat.
 //  • Vulture (Containment) discards = destroy (bottom of deck, face down).
 //  • Containment and Blockade are triggered by Rabbit (Reinforce) plays, but
@@ -26,6 +26,7 @@
   const C = (typeof module !== 'undefined') ? require('./cards.js') : { DEFS: CARD_DEFS, LABEL: THEATRE_LABEL };
   const DEFS_ = C.DEFS || C.CARD_DEFS, LABEL_ = C.LABEL || C.THEATRE_LABEL;
 
+  const N = (key) => (DEFS_.find(d => d.key === key) || { name: key }).name;
   const OFFSET_INSTANT = (id) => DEFS_[id].type === 'instant';
 
   function shuffle(a) {
@@ -309,7 +310,7 @@
 
     // Containment (Vulture)
     if (!faceUp && anyFaceUp(s, 'containment')) {
-      destroy(s, id, `Vulture discards the face-down animal played to ${hab}.`);
+      destroy(s, id, `${N('containment')} discards the face-down animal played to ${hab}.`);
       return;
     }
     // Blockade (Octopus) — adjacent habitat already holding 3+ animals.
@@ -319,11 +320,11 @@
       if (isBot(s, p) && st.src !== 'redirect') {
         stack.pop();
         const order = botChoiceOrder(s, pos).filter(q => adjacent(pos).includes(q));
-        log(s, `Octopus blocks the play to ${hab}.`);
+        log(s, `${N('blockade')} blocks the play to ${hab}.`);
         s.steps.unshift({ t: 'place', id, player: p, pos: order[0], faceUp: false, src: 'redirect' });
         return;
       }
-      destroy(s, id, `Octopus discards the animal played to ${hab} (it already held 3 or more animals) — no effect.`);
+      destroy(s, id, `${N('blockade')} discards the animal played to ${hab} (it already held 3 or more animals) — no effect.`);
       return;
     }
     if (faceUp && OFFSET_INSTANT(id)) s.triggers.push({ id, owner: p });
@@ -359,12 +360,13 @@
     log(s, `${sideName(s, p)} ${verb(s, p, 'move')} ${name} from ${LABEL_[s.order[f.pos]]} to ${LABEL_[s.order[st.to]]}.`);
   }
 
-  function uncoveredIn(s, positions, side) {
+  // All cards (covered and uncovered) in the given habitats, top card first.
+  function cardsIn(s, positions, side) {
     const out = [];
     for (const pos of positions) for (const p of [0, 1]) {
       if (side !== undefined && side !== null && p !== side) continue;
       const st = s.board[pos][p];
-      if (st.length) out.push(st[st.length - 1].id);
+      for (let i = st.length - 1; i >= 0; i--) out.push(st[i].id);
     }
     return out;
   }
@@ -376,11 +378,11 @@
     switch (st.kind) {
       case 'flip': {
         const positions = st.scope === 'adjacent' ? adjacent(srcPos) : [0, 1, 2];
-        options = uncoveredIn(s, positions, st.side);
+        options = cardsIn(s, positions, st.side);
         break;
       }
       case 'reinforce':
-        if (!s.deck.length) { log(s, 'Rabbit: the deck is empty.'); return; }
+        if (!s.deck.length) { log(s, `${N('reinforce')}: the deck is empty.`); return; }
         options = adjacent(srcPos);
         break;
       case 'transportCard':
@@ -399,8 +401,8 @@
     if (!options.length) {
       const msgs = {
         flip: `${def(st.src).name}: no animal can be flipped.`,
-        transportCard: 'Seahorse: no animal to move.',
-        redeploy: 'Otter: no face-down animal to return.'
+        transportCard: `${N('transport')}: no animal to move.`,
+        redeploy: `${N('redeploy')}: no face-down animal to return.`
       };
       if (msgs[st.kind]) log(s, msgs[st.kind]);
       return;
@@ -421,35 +423,35 @@
     switch (d.key) {
       case 'airdrop':
         s.airdropArmed[owner] = true;
-        log(s, `Cuckoo: on ${s.names[owner] === 'You' ? 'your' : s.names[owner] + "'s"} next turn, an animal may be played face up to a non-matching habitat.`);
+        log(s, `${N('airdrop')}: on ${s.names[owner] === 'You' ? 'your' : s.names[owner] + "'s"} next turn, an animal may be played face up to a non-matching habitat.`);
         break;
       case 'maneuver':
         s.steps.unshift(S({ kind: 'flip', player: owner, scope: 'adjacent', side: null,
-          prompt: 'Mallard: flip an uncovered animal in an adjacent habitat.' }));
+          prompt: `${d.name}: flip an animal (covered or uncovered) in an adjacent habitat.` }));
         break;
       case 'ambush':
         s.steps.unshift(S({ kind: 'flip', player: owner, scope: 'any', side: null,
-          prompt: 'Snake: flip an uncovered animal in any habitat.' }));
+          prompt: `${d.name}: flip an animal (covered or uncovered) in any habitat.` }));
         break;
       case 'disrupt':
         s.steps.unshift(
           S({ kind: 'flip', player: opp, scope: 'any', side: opp,
-            prompt: 'Fox: choose and flip 1 of your own uncovered animals.' }),
+            prompt: `${d.name}: choose and flip 1 of your own animals.` }),
           S({ kind: 'flip', player: owner, scope: 'any', side: owner,
-            prompt: 'Fox: now flip 1 of your own uncovered animals.' })
+            prompt: `${d.name}: now flip 1 of your own animals.` })
         );
         break;
       case 'reinforce':
         s.steps.unshift(S({ kind: 'reinforce', player: owner, optional: true,
-          prompt: 'Rabbit: you may play the top animal of the deck face down to an adjacent habitat.' }));
+          prompt: `${d.name}: you may play the top animal of the deck face down to an adjacent habitat.` }));
         break;
       case 'transport':
         s.steps.unshift(S({ kind: 'transportCard', player: owner, optional: true,
-          prompt: 'Seahorse: you may move 1 of your animals to a different habitat. Choose the animal.' }));
+          prompt: `${d.name}: you may move 1 of your animals to a different habitat. Choose the animal.` }));
         break;
       case 'redeploy':
         s.steps.unshift(S({ kind: 'redeploy', player: owner, optional: !isBot(s, owner),
-          prompt: 'Otter: return 1 of your face-down animals to your hand to gain an extra turn.' }));
+          prompt: `${d.name}: return 1 of your face-down animals to your hand to gain an extra turn.` }));
         break;
     }
   }
@@ -465,15 +467,15 @@
       s.steps.unshift({ t: 'place', id, player: pd.player, pos: v, faceUp: false, src: 'deck' });
     },
     transportCard(s, pd, v) {
-      if (v === null) { log(s, 'Seahorse: no animal moved.'); return; }
+      if (v === null) { log(s, `${N('transport')}: no animal moved.`); return; }
       s.steps.unshift({ t: 'decide', kind: 'transportDest', player: pd.player, src: pd.src, srcPos: pd.srcPos, card: v,
-        optional: false, prompt: 'Seahorse: choose the habitat to move it to.' });
+        optional: false, prompt: `${N('transport')}: choose the habitat to move it to.` });
     },
     transportDest(s, pd, v) {
       s.steps.unshift({ t: 'move', id: pd.card, to: v });
     },
     redeploy(s, pd, v) {
-      if (v === null) { log(s, 'Otter: no animal returned.'); return; }
+      if (v === null) { log(s, `${N('redeploy')}: no animal returned.`); return; }
       const f = find(s, v);
       s.board[f.pos][f.player].splice(f.index, 1);
       s.hands[pd.player].push(v); // bot: returned cards go to the bottom of its hand

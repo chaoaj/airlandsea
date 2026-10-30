@@ -99,7 +99,7 @@ canvas { display: block; }
 
 /* ---------- layout ---------- */
 .layout { flex: 1 1 auto; display: flex; min-height: 0; }
-.main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.main { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .board-wrap { position: relative; flex: 1 1 auto; min-height: 430px; }
 .canvas-holder { position: absolute; inset: 0; }
 .overlay { position: absolute; inset: 0; pointer-events: none; }
@@ -118,10 +118,10 @@ canvas { display: block; }
 .actions {
   background: var(--panel);
   border-top: 1px solid var(--line);
-  padding: 10px max(12px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  padding: 8px max(12px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 .actions:focus { outline: none; }
-.prompt { margin: 0 0 8px; font-size: 1rem; font-weight: 600; }
+.prompt { margin: 0 0 6px; font-size: 1rem; font-weight: 600; }
 .prompt .detail { display: block; font-weight: 400; color: var(--muted); font-size: .92rem; }
 .action-buttons { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
 .action-buttons .group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -139,6 +139,15 @@ canvas { display: block; }
 .log li { padding: 5px 0; border-bottom: 1px solid #2c445a; color: var(--muted); }
 .log li.battle { color: var(--text); font-weight: 600; }
 .log-toggle, .log-close { display: none; }
+
+/* Desktop / tablet: keep the whole game on one screen. The board canvas
+   shrinks to fit, and the log scrolls inside its own panel. */
+@media (min-width: 701px) and (min-height: 540px) {
+  body { height: 100vh; height: 100dvh; overflow: hidden; }
+  .board-wrap { min-height: 0; }
+  .topbar { padding-top: 6px; padding-bottom: 6px; }
+  .topnav .btn { min-height: 40px; padding: 6px 12px; }
+}
 
 @media (max-width: 1099px) {
   .logpanel {

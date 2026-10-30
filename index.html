@@ -79,6 +79,12 @@
         <label class="choice"><input type="checkbox" name="hide" checked> Hide hands between turns (pass the device)</label>
       </fieldset>
       <fieldset>
+        <legend>Theme</legend>
+        <label class="choice"><input type="radio" name="theme" value="critters" checked> Critters (print-and-play photo cards)</label>
+        <label class="choice"><input type="radio" name="theme" value="critterswar"> Critters at War (cartoon critters)</label>
+        <label class="choice"><input type="radio" name="theme" value="war"> War (classic planes, tanks and ships)</label>
+      </fieldset>
+      <fieldset>
         <legend>Game length</legend>
         <label class="choice"><input type="radio" name="length" value="standard" checked> Standard: first to 12 points</label>
         <label class="choice"><input type="radio" name="length" value="long"> Long game: first to 18 points</label>
@@ -158,6 +164,8 @@
   </dialog>
 
   <script src="js/cards.js"></script>
+  <script src="js/themes.js"></script>
+  <script src="js/art.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/bot.js"></script>
   <script src="js/rules-text.js"></script>

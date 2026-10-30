@@ -5,6 +5,13 @@ A mobile-friendly, accessible p5.js version of *Air, Land & Sea: Critters* using
 
 [Production url](https://chaoaj.github.io/airlandsea/)
 
+## Themes (chosen on the New game screen)
+- **Critters** — the print-and-play photo cards (animals / habitats).
+- **Critters at War** — Critters at War card names with original cartoon critter art drawn in p5.js.
+- **War** — classic military card names with original plane, tank and ship art drawn in p5.js.
+
+The rules are identical in every theme. The official Arcane Wonders artwork is not reproduced; the drawn art lives in `js/art.js`.
+
 ## Modes
 - **1 player vs. the Bot** — follows the official *Bot Rules* card (Bot is always 1st player, plays the top card of its hand face up, withdraws on a 4th card, Priority & Choice order, flip priority, Blockade redirect).
   - *Bot Rules + Difficulty Enhancement* — Bot adds 1–2 deck cards when it loses 2–3 habitats.
@@ -25,6 +32,8 @@ A mobile-friendly, accessible p5.js version of *Air, Land & Sea: Critters* using
 ## Files
 - `index.html`, `style.css`, `sketch.js` — p5.js UI
 - `js/cards.js` — card data (text transcribed from the cards)
+- `js/themes.js` — theme names, ability text, alt text, vocabulary
+- `js/art.js` — p5-drawn card art for Critters at War and War
 - `js/engine.js` — rules engine (serialisable state)
 - `js/bot.js` — solo Bot
 - `js/rules-text.js` — in-game rules
